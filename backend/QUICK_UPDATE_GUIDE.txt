@@ -1,0 +1,36 @@
+================================================================================
+QUICK UPDATE GUIDE - New Facebook Token
+================================================================================
+
+STEP 1: Update .env File
+-------------------------
+Open: backend/.env
+
+Find this line:
+FACEBOOK_ACCESS_TOKEN=EAATni7kysWYBQXKTdOWV1Au5uc8yOaBNlAH2IH9LnxJCz8n1QXvZAQTg1rp8qkFQNc02o1EEvcnY7HoLF9M3QERtrdebkyTzY0yHA1oRM14OrbZCN0UwzZCcKI6XW9795Sl7mnvvZAagGiiz7JitRACEJBOQgF7xrOdSB0pzXYMgAuNPyhiupsU8eKlKibekFQCcrtDpTiL964ADJ7DZBm5YbeE9ZCOj7MatOVW2PkggwnYgF7FP6S1p92s55H6oDPxGShY3RWGoJtDrehWRxU
+
+Replace with:
+FACEBOOK_ACCESS_TOKEN=EAATni7kysWYBQQiE6VY53hSN3Kh9deIhqYlHfMsJxRHRG3cvgW2oCEjuCZAZC3GNSfdy5S2ZCC6qaKnA7fmCZBYIZBG5KyYyDhrmhuZB5QaWEjkFCcz7omUAPPZB3xZCp5zl1EUgZCAdRCrprQzmhIYLSzOl6C3IFcOZAlZBWGWEdtslB3ZBVoy5OpZAlUpfDmoDGgrabHw9JZCLRadxC92aO5CnMuRZBMD4SZBeHPmczlv8cmbrU4Rx5ZAK8gj7KnIKpZAL4ZB9Q2Q4Dc3EDMZCttt9AHJ2ARs2
+
+Save the file!
+
+STEP 2: Test Token
+------------------
+cd backend
+python test_facebook_direct.py
+
+Should show: [OK] Facebook is working!
+
+STEP 3: Configure Sources
+--------------------------
+python focus_facebook_tiktok.py
+
+This enables Facebook & TikTok, disables Twitter/Instagram
+
+STEP 4: Start Scraping
+----------------------
+python trigger_scrape.py
+
+================================================================================
+STATUS: New token works! Just update .env and you're ready!
+================================================================================

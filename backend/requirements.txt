@@ -1,0 +1,45 @@
+# Core dependencies
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic>=2.5.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
+
+# Database
+sqlalchemy==2.0.25
+pymysql==1.1.0  # MySQL driver (pure Python, easier to install than mysqlclient)
+cryptography==41.0.7  # Required for pymysql SSL connections
+alembic==1.13.1
+
+# Task queue
+celery==5.3.4
+redis==5.0.1
+
+# HTTP requests
+httpx==0.26.0
+requests==2.31.0
+aiohttp==3.9.1
+
+# Social media APIs
+tweepy==4.14.0
+facebook-sdk==3.1.0
+TikTokApi==6.1.0  # TikTok scraping library
+playwright==1.41.0  # Required by TikTokApi
+# instagrapi==2.0.0  # Commented out due to pydantic v2 incompatibility
+# Note: instagrapi requires pydantic v1, but FastAPI 0.109+ requires pydantic v2
+# Use instagrapi2 or alternative Instagram API wrapper if needed
+
+# Scraping (for public data only)
+beautifulsoup4==4.12.2
+selenium==4.16.0
+playwright==1.41.0
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+pytz==2024.1
+
+# Logging and monitoring
+loguru==0.7.2
+
+# CORS
+python-multipart==0.0.6

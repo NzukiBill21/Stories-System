@@ -1,0 +1,34 @@
+================================================================================
+QUICK DATABASE PASSWORD FIX
+================================================================================
+
+ISSUE: Access denied - Wrong password
+
+COMMON PROBLEMS:
+1. Password has quotes: DB_PASSWORD='password'  ❌
+   Fix: DB_PASSWORD=password  ✅
+
+2. Password has spaces: DB_PASSWORD= password  ❌
+   Fix: DB_PASSWORD=password  ✅
+
+3. Password not saved in .env file
+
+HOW TO FIX:
+1. Open: backend/.env
+2. Find: DB_PASSWORD=...
+3. Remove any quotes or spaces
+4. Make sure password matches MySQL
+5. Save file
+6. Test: python verify_and_fix_db.py
+
+VERIFY PASSWORD WORKS:
+- Test in MySQL: mysql -u root -p
+- Or in MySQL Workbench
+- If it works there, password is correct
+
+AFTER FIXING:
+python verify_and_fix_db.py
+
+Should show: [OK] Connection successful!
+
+================================================================================

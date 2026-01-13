@@ -1,0 +1,27 @@
+================================================================================
+URGENT: Instagram Token Fix
+================================================================================
+
+PROBLEM: You're using App Token instead of User Access Token
+
+QUICK FIX (2 minutes):
+
+1. In Graph API Explorer:
+   - Click the BLUE button: "Generate Instagram Access Token"
+   - Change "User or Page" from "App Token" to YOUR INSTAGRAM ACCOUNT
+   - Select permission: instagram_basic
+   - Click "Generate Access Token"
+   - Copy the new token (starts with IG... or EAAT...)
+
+2. Edit backend/.env:
+   INSTAGRAM_ACCESS_TOKEN=your_new_token_here
+
+3. Test:
+   python fix_instagram_token.py
+
+================================================================================
+KEY POINT: App Token (1380487200420198|...) doesn't work!
+           You need User Token (IG... or EAAT...)
+================================================================================
+
+See: backend/INSTAGRAM_QUICK_FIX.md for detailed guide
