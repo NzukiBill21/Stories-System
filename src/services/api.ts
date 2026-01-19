@@ -5,7 +5,7 @@ export interface Story {
   id: string;
   headline: string;
   source: string;
-  platform: "X" | "Facebook" | "News" | "Instagram" | "TikTok";
+  platform: "X" | "Facebook" | "News" | "Instagram" | "TikTok" | "Reddit" | "RSS" | "GoogleTrends" | "YouTube" | string;
   engagement: number;
   velocity: "high" | "medium" | "low";
   reason: string;

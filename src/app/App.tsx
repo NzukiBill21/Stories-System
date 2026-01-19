@@ -24,7 +24,7 @@ export default function App() {
   const [filters, setFilters] = useState({
     platform: "all",
     velocity: "all",
-    credibility: 80,
+    credibility: 0,
   });
 
   // No mock data - only use real scraped data from API

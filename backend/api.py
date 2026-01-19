@@ -15,6 +15,15 @@ from loguru import logger
 
 app = FastAPI(title="Story Intelligence Dashboard API", version="1.0.0")
 
+# CORS middleware - must be added before routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Start background scheduler when API app starts
 @app.on_event("startup")
 async def startup_event():
@@ -25,15 +34,6 @@ async def startup_event():
         logger.info("Background scheduler started on API startup")
     except Exception as e:
         logger.error(f"Failed to start background scheduler: {e}")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default ports
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 # Pydantic models for API responses

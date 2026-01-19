@@ -21,7 +21,7 @@ interface FilterPanelProps {
 export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFiltersChange }: FilterPanelProps) {
   const [platform, setPlatform] = useState(externalFilters?.platform || "all");
   const [velocity, setVelocity] = useState(externalFilters?.velocity || "all");
-  const [credibility, setCredibility] = useState([externalFilters?.credibility || 80]);
+  const [credibility, setCredibility] = useState([externalFilters?.credibility || 0]);
 
   // Sync with external filters
   useEffect(() => {
@@ -46,7 +46,7 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
   const resetFilters = () => {
     setPlatform("all");
     setVelocity("all");
-    setCredibility([80]);
+    setCredibility([0]);
   };
 
   if (!isOpen) return null;
@@ -94,6 +94,10 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
                 <SelectItem value="Facebook">Facebook</SelectItem>
                 <SelectItem value="X">X (Twitter)</SelectItem>
                 <SelectItem value="Instagram">Instagram</SelectItem>
+                <SelectItem value="Reddit">Reddit</SelectItem>
+                <SelectItem value="RSS">RSS</SelectItem>
+                <SelectItem value="GoogleTrends">Google Trends</SelectItem>
+                <SelectItem value="YouTube">YouTube</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -152,10 +156,10 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
                   {velocity} velocity
                 </Badge>
               )}
-              {credibility[0] > 80 && (
+              {credibility[0] > 0 && (
                 <Badge variant="secondary">Min credibility: {credibility[0]}%</Badge>
               )}
-              {platform === "all" && velocity === "all" && credibility[0] === 80 && (
+              {platform === "all" && velocity === "all" && credibility[0] === 0 && (
                 <span className="text-sm text-muted-foreground">No active filters</span>
               )}
             </div>

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import datetime, timedelta
 from typing import List, Optional
+import re
 from models import Source, RawPost, Story, ScrapeLog
 from platforms import get_scraper
 from scoring import (
@@ -201,10 +202,21 @@ def process_post_to_story(db: Session, raw_post: RawPost) -> Optional[Story]:
         # Generate headline (first 100 chars of content or author + platform)
         # Try to extract a meaningful headline from content
         content = raw_post.content or ""
-        headline = content[:100].strip()
+        
+        # Special handling for Google Trends - content should already be clean topic name
+        if raw_post.platform == "GoogleTrends":
+            # For Google Trends, the content IS the headline (trending topic name)
+            headline = content.strip()
+            # Remove any remaining artifacts
+            headline = re.sub(r'\s+', ' ', headline)
+            # If it contains "Trending search in", remove that part
+            headline = re.sub(r'\s*Trending search in [A-Z]{2}\s*', '', headline, flags=re.I)
+            headline = headline.strip()
+        else:
+            headline = content[:100].strip()
         
         # If content is too short or empty, create a descriptive headline
-        if not headline or len(headline) < 10:
+        if not headline or len(headline) < 3:
             headline = f"{raw_post.author} on {raw_post.platform}"
         else:
             # Clean up headline - remove extra whitespace, newlines

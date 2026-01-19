@@ -6,7 +6,7 @@ export interface Story {
   id: string;
   headline: string;
   source: string;
-  platform: "X" | "Facebook" | "TikTok" | "Instagram" | "News";
+  platform: "X" | "Facebook" | "TikTok" | "Instagram" | "News" | "Reddit" | "RSS" | "GoogleTrends" | "YouTube" | string;
   engagement: number;
   velocity: "high" | "medium" | "low";
   reason: string;
@@ -27,12 +27,20 @@ export function StoryCard({ story, onClick }: StoryCardProps) {
     low: "text-blue-500",
   };
 
-  const platformColors = {
+  const platformColors: Record<string, string> = {
     X: "bg-black text-white dark:bg-white dark:text-black",
     Facebook: "bg-blue-600 text-white",
     TikTok: "bg-pink-600 text-white",
     Instagram: "bg-gradient-to-r from-purple-600 to-pink-600 text-white",
     News: "bg-purple-600 text-white",
+    Reddit: "bg-orange-600 text-white",
+    RSS: "bg-indigo-600 text-white",
+    GoogleTrends: "bg-blue-500 text-white",
+    YouTube: "bg-red-600 text-white",
+  };
+  
+  const getPlatformColor = (platform: string) => {
+    return platformColors[platform] || "bg-gray-600 text-white";
   };
 
   return (
@@ -60,7 +68,7 @@ export function StoryCard({ story, onClick }: StoryCardProps) {
 
         {/* Source and Platform */}
         <div className="flex items-center gap-2 mb-3">
-          <Badge variant="secondary" className={`${platformColors[story.platform]} text-xs`}>
+          <Badge variant="secondary" className={`${getPlatformColor(story.platform)} text-xs`}>
             {story.platform}
           </Badge>
           <span className="text-sm text-muted-foreground truncate">{story.source}</span>
