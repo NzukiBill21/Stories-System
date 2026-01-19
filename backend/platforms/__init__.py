@@ -3,6 +3,9 @@ from platforms.twitter import TwitterScraper
 from platforms.facebook import FacebookScraper
 from platforms.instagram import InstagramScraper
 from platforms.tiktok import TikTokScraper
+from platforms.rss import RSSScraper
+from platforms.reddit import RedditScraper
+from platforms.google_trends import GoogleTrendsScraper
 
 
 def get_scraper(platform: str):
@@ -13,6 +16,9 @@ def get_scraper(platform: str):
         'Facebook': FacebookScraper,
         'Instagram': InstagramScraper,
         'TikTok': TikTokScraper,
+        'RSS': RSSScraper,
+        'Reddit': RedditScraper,
+        'GoogleTrends': GoogleTrendsScraper,
     }
     
     scraper_class = scrapers.get(platform)

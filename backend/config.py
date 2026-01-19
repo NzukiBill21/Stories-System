@@ -35,20 +35,20 @@ class Settings(BaseSettings):
     instagram_access_token: str = ""
     
     # TikTok Configuration
-    tiktok_trending_limit: int = 50  # Number of trending videos to fetch per run
-    tiktok_min_engagement_velocity: float = 100.0  # Minimum engagement per minute
+    tiktok_trending_limit: int = 100  # Number of trending videos to fetch per run (increased for more content)
+    tiktok_min_engagement_velocity: float = 50.0  # Minimum engagement per minute (lowered to catch more trending content)
     
     # Scraping
     scraping_enabled: bool = True
     rate_limit_delay: float = 1.0
     
     # Scoring thresholds
-    min_engagement_score: int = 50
-    min_engagement_velocity: float = 10.0  # likes/hour
+    min_engagement_score: int = 30  # Lowered to catch more trending content
+    min_engagement_velocity: float = 5.0  # Lowered to catch more trending content (likes/hour)
     
     # Server
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_port: int = 8001  # Changed to avoid conflict with other API
     
     # Trusted sources (high credibility accounts)
     trusted_sources: List[str] = [
@@ -58,8 +58,18 @@ class Settings(BaseSettings):
     
     # Trending keywords (for topic relevance scoring)
     trending_keywords: List[str] = [
-        # Global keywords
-        "breaking", "election", "crisis", "announcement",
+        # Global trending keywords
+        "breaking", "election", "crisis", "announcement", "scandal", "protest",
+        "viral", "trending", "shocking", "exclusive", "investigation", "revealed",
+        "outrage", "controversy", "resignation", "arrest", "court", "verdict",
+        "emergency", "disaster", "accident", "fire", "flood", "earthquake",
+        "pandemic", "outbreak", "health", "medical", "vaccine", "treatment",
+        "technology", "innovation", "launch", "release", "update", "hack",
+        "celebration", "victory", "champion", "award", "record", "achievement",
+        "politics", "government", "policy", "law", "bill", "vote",
+        "economy", "market", "stock", "business", "trade", "finance",
+        "sports", "match", "game", "tournament", "championship", "win",
+        "entertainment", "movie", "music", "celebrity", "premiere", "awards",
         # Kenyan keywords (will be merged with kenyan_sources_config)
     ]
     

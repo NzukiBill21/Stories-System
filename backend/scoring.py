@@ -100,20 +100,31 @@ def calculate_topic_relevance_score(content: str, is_kenyan: bool = False, locat
     # Count keyword matches
     matches = sum(1 for keyword in all_keywords if keyword in content_lower)
     
-    # Boost score for Kenyan content
-    kenyan_boost = 20.0 if is_kenyan else 0.0
+    # Boost score for Kenyan content (increased priority)
+    kenyan_boost = 30.0 if is_kenyan else 0.0
     
-    # Boost score for Kenyan locations
+    # Boost score for Kenyan locations (increased priority)
     location_boost = 0.0
     if location:
         location_lower = location.lower()
+        # Check for Kenyan locations
         if any(kenyan_loc.lower() in location_lower for kenyan_loc in KENYAN_LOCATIONS):
+            location_boost = 25.0
+        # Check for other African locations
+        elif any(african_loc in location_lower for african_loc in ['africa', 'nairobi', 'mombasa', 'lagos', 'johannesburg', 'cairo', 'accra', 'dar es salaam', 'kampala']):
             location_boost = 15.0
     
     # Score based on number of matches
     # More matches = higher relevance
+    # Boost for trending keywords (breaking, viral, trending, etc.)
+    trending_keywords_boost = 0.0
+    trending_indicators = ['breaking', 'viral', 'trending', 'shocking', 'exclusive', 
+                          'outrage', 'controversy', 'emergency', 'scandal']
+    if any(indicator in content_lower for indicator in trending_indicators):
+        trending_keywords_boost = 25.0
+    
     base_score = min(matches * 20, 100)  # 20 points per keyword, max 100
-    total_score = min(base_score + kenyan_boost + location_boost, 100)
+    total_score = min(base_score + kenyan_boost + location_boost + trending_keywords_boost, 100)
     
     return total_score
 
@@ -174,9 +185,17 @@ def calculate_overall_score(
     
     if is_kenyan:
         reasons.append("Kenyan content")
+        # Boost overall score for Kenyan content
+        overall_score += 15.0
     
-    if location and any(kenyan_loc.lower() in location.lower() for kenyan_loc in KENYAN_LOCATIONS):
-        reasons.append("Kenyan location")
+    if location:
+        location_lower = location.lower()
+        if any(kenyan_loc.lower() in location_lower for kenyan_loc in KENYAN_LOCATIONS):
+            reasons.append("Kenyan location")
+            overall_score += 10.0
+        elif any(african_loc in location_lower for african_loc in ['africa', 'nairobi', 'mombasa', 'lagos', 'johannesburg', 'cairo', 'accra']):
+            reasons.append("African location")
+            overall_score += 5.0
     
     if likes >= 1000 or comments >= 100 or shares >= 50:
         reasons.append("High engagement metrics")

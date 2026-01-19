@@ -2,15 +2,29 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_db
 from models import Story, Source
 from services import get_trending_stories, scrape_source
 from pydantic import BaseModel
 from config import settings
+from background_scheduler import get_scheduler
+from loguru import logger
 
 app = FastAPI(title="Story Intelligence Dashboard API", version="1.0.0")
+
+# Start background scheduler when API app starts
+@app.on_event("startup")
+async def startup_event():
+    """Start background scheduler when API starts."""
+    try:
+        from background_scheduler import start_background_scheduler
+        start_background_scheduler()
+        logger.info("Background scheduler started on API startup")
+    except Exception as e:
+        logger.error(f"Failed to start background scheduler: {e}")
 
 # CORS middleware
 app.add_middleware(
@@ -83,6 +97,27 @@ async def root():
     return {"message": "Story Intelligence Dashboard API", "version": "1.0.0"}
 
 
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    scheduler = get_scheduler()
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "auto_scraping": scheduler.running if scheduler else False
+    }
+
+
+@app.get("/api/scheduler/status")
+async def get_scheduler_status():
+    """Get background scheduler status."""
+    scheduler = get_scheduler()
+    return {
+        "running": scheduler.running if scheduler else False,
+        "check_interval_minutes": scheduler.check_interval_minutes if scheduler else None
+    }
+
+
 @app.get("/api/stories", response_model=List[StoryResponse])
 async def get_stories(
     limit: int = Query(50, ge=1, le=200),
@@ -100,7 +135,7 @@ async def get_stories(
     Args:
         limit: Maximum number of stories to return
         min_score: Minimum score threshold
-        platform: Filter by platform (X, Facebook, Instagram, TikTok)
+        platform: Filter by platform (X, Facebook, Instagram, TikTok, Reddit, RSS)
         hours_back: Only get stories from last N hours
         db: Database session
     """
@@ -241,8 +276,6 @@ async def get_hashtags(
             "hashtag": hashtag.hashtag,
             "platform": hashtag.platform,
             "is_kenyan": hashtag.is_kenyan,
-            "posts_per_hashtag": hashtag.posts_per_hashtag,
-            "min_engagement": hashtag.min_engagement,
             "last_scraped_at": hashtag.last_scraped_at.isoformat() if hashtag.last_scraped_at else None
         }
         for hashtag in hashtags
@@ -251,7 +284,7 @@ async def get_hashtags(
 
 @app.post("/api/scrape/hashtag/{hashtag_id}")
 async def scrape_hashtag_endpoint(hashtag_id: int, db: Session = Depends(get_db)):
-    """Trigger hashtag scraping for a specific hashtag."""
+    """Trigger scraping for a specific hashtag."""
     from hashtag_scraper import scrape_hashtag
     
     result = scrape_hashtag(db, hashtag_id)
@@ -262,7 +295,82 @@ async def scrape_hashtag_endpoint(hashtag_id: int, db: Session = Depends(get_db)
     return result
 
 
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+@app.get("/api/insights")
+async def get_insights(
+    hours_back: int = Query(24, ge=1, le=168),
+    db: Session = Depends(get_db)
+):
+    """
+    Get insights and analytics data.
+    
+    Args:
+        hours_back: Time range for insights
+        db: Database session
+    """
+    time_threshold = datetime.utcnow() - timedelta(hours=hours_back)
+    
+    # Get stories in time range
+    stories = db.query(Story).filter(
+        Story.is_active == True,
+        Story.posted_at >= time_threshold
+    ).all()
+    
+    # Calculate topic clusters
+    topic_counts = {}
+    for story in stories:
+        topic = story.topic or "General"
+        topic_counts[topic] = topic_counts.get(topic, 0) + 1
+    
+    # Get trending topics (top 5)
+    trending_topics = sorted(
+        topic_counts.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )[:5]
+    
+    # Calculate platform distribution
+    platform_counts = {}
+    for story in stories:
+        platform = story.platform
+        platform_counts[platform] = platform_counts.get(platform, 0) + 1
+    
+    # Calculate velocity distribution
+    high_velocity = sum(1 for s in stories if s.engagement_velocity >= 100)
+    medium_velocity = sum(1 for s in stories if 50 <= s.engagement_velocity < 100)
+    low_velocity = sum(1 for s in stories if s.engagement_velocity < 50)
+    
+    # Get top keywords from story headlines
+    keywords = {}
+    for story in stories:
+        if story.headline:
+            words = story.headline.lower().split()
+            for word in words:
+                if len(word) > 4:  # Only meaningful words
+                    keywords[word] = keywords.get(word, 0) + 1
+    
+    top_keywords = sorted(keywords.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    return {
+        "total_stories": len(stories),
+        "high_velocity": high_velocity,
+        "medium_velocity": medium_velocity,
+        "low_velocity": low_velocity,
+        "trending_topics": [
+            {"name": topic, "count": count}
+            for topic, count in trending_topics
+        ],
+        "platform_distribution": platform_counts,
+        "top_keywords": [
+            {"keyword": word, "mentions": count}
+            for word, count in top_keywords
+        ],
+        "topic_clusters": [
+            {
+                "topic": topic,
+                "count": count,
+                "velocity": "rising" if count > len(stories) / len(topic_counts) else "stable",
+                "keywords": [word for word, _ in top_keywords[:3]]
+            }
+            for topic, count in trending_topics
+        ]
+    }

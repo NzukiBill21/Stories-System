@@ -80,7 +80,10 @@ def scrape_source(db: Session, source_id: int) -> dict:
                 comments=post_data['comments'],
                 shares=post_data['shares'],
                 views=post_data['views'],
-                raw_data=post_data['raw_data']
+                raw_data=post_data['raw_data'],
+                # Inherit Kenyan flag and location from source or post_data
+                is_kenyan=post_data.get('is_kenyan', source.is_kenyan if source else False),
+                location=post_data.get('location', source.location if source else None)
             )
             
             db.add(raw_post)
@@ -89,14 +92,19 @@ def scrape_source(db: Session, source_id: int) -> dict:
             posts_fetched += 1
             
             # Process and score the post
-            story = process_post_to_story(db, raw_post)
-            if story:
-                posts_processed += 1
-                if should_keep_post(story.score, story.engagement_velocity):
-                    stories_created += 1
-                else:
-                    # Delete story if it doesn't meet threshold
-                    db.delete(story)
+            try:
+                story = process_post_to_story(db, raw_post)
+                if story:
+                    posts_processed += 1
+                    if should_keep_post(story.score, story.engagement_velocity):
+                        stories_created += 1
+                    else:
+                        # Delete story if it doesn't meet threshold
+                        db.delete(story)
+                        db.flush()
+            except Exception as e:
+                logger.error(f"Error processing post {raw_post.id} to story: {e}")
+                continue
         
         # Update source last_checked_at
         source.last_checked_at = datetime.utcnow()
@@ -219,6 +227,19 @@ def process_post_to_story(db: Session, raw_post: RawPost) -> Optional[Story]:
         else:
             topic = "General"
         
+        # Check if story already exists for this raw_post
+        existing_story = db.query(Story).filter(Story.raw_post_id == raw_post.id).first()
+        if existing_story:
+            # Update existing story
+            existing_story.score = overall_score
+            existing_story.engagement_velocity = engagement_velocity
+            existing_story.credibility_score = credibility_score
+            existing_story.topic_relevance_score = topic_relevance_score
+            existing_story.headline = headline
+            existing_story.reason_flagged = reason_flagged
+            existing_story.topic = topic
+            return existing_story
+        
         # Create story
         story = Story(
             raw_post_id=raw_post.id,
@@ -243,6 +264,7 @@ def process_post_to_story(db: Session, raw_post: RawPost) -> Optional[Story]:
         )
         
         db.add(story)
+        db.flush()  # Flush to ensure story is persisted
         return story
         
     except Exception as e:
@@ -291,19 +313,46 @@ def get_trending_stories(
     if is_kenyan is not None:
         query = query.filter(Story.is_kenyan == is_kenyan)
     
-    # Filter by location
+    # Filter by location (supports partial matches for "Africa", "Kenya", etc.)
     if location:
-        query = query.filter(Story.location.contains(location))
+        # Case-insensitive location matching
+        from sqlalchemy import func, or_
+        location_lower = location.lower()
+        
+        # For "Africa" filter, match various African locations
+        if location_lower == "africa":
+            # Match stories with African locations or African countries
+            # Also include Kenyan content (is_kenyan=True) as part of Africa
+            african_locations = ['africa', 'kenya', 'nigeria', 'south africa', 'ghana', 
+                               'tanzania', 'uganda', 'nairobi', 'mombasa', 'lagos', 
+                               'johannesburg', 'cairo', 'accra', 'dar es salaam', 'kampala',
+                               'kisumu', 'nakuru', 'eldoret']
+            conditions = [
+                func.lower(Story.location).contains(loc) 
+                for loc in african_locations
+            ]
+            # Also include Kenyan stories even if location is not set
+            conditions.append(Story.is_kenyan == True)
+            query = query.filter(or_(*conditions))
+        else:
+            # Specific location match
+            query = query.filter(
+                func.lower(Story.location).contains(location_lower)
+            )
     
     # Filter by topic
     if topic:
         query = query.filter(Story.topic == topic)
     
-    # Order by score descending (prioritize Kenyan content)
-    # Kenyan stories get slight boost in ordering
+    # Order by score descending (prioritize trending content)
+    # Prioritize high engagement velocity (trending content)
+    # Then prioritize Kenyan content
+    # Then by overall score
     query = query.order_by(
-        Story.is_kenyan.desc(),  # Kenyan first
-        Story.score.desc()  # Then by score
+        Story.engagement_velocity.desc(),  # High engagement velocity first (trending)
+        Story.is_kenyan.desc(),  # Kenyan second
+        Story.score.desc(),  # Then by overall score
+        Story.posted_at.desc()  # Most recent last (but still important)
     )
     
     return query.limit(limit).all()
