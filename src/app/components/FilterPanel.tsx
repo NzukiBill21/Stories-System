@@ -1,10 +1,11 @@
 import { motion } from "motion/react";
-import { Filter, X } from "lucide-react";
+import { Filter, X, Flame } from "lucide-react";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Slider } from "./ui/slider";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { Switch } from "./ui/switch";
 import { useState, useEffect } from "react";
 
 interface FilterPanelProps {
@@ -14,14 +15,18 @@ interface FilterPanelProps {
     platform: string;
     velocity: string;
     credibility: number;
+    showHot?: boolean;
+    kenyanOnly?: boolean;
   };
-  onFiltersChange?: (filters: { platform: string; velocity: string; credibility: number }) => void;
+  onFiltersChange?: (filters: { platform: string; velocity: string; credibility: number; showHot: boolean; kenyanOnly: boolean }) => void;
 }
 
 export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFiltersChange }: FilterPanelProps) {
   const [platform, setPlatform] = useState(externalFilters?.platform || "all");
   const [velocity, setVelocity] = useState(externalFilters?.velocity || "all");
   const [credibility, setCredibility] = useState([externalFilters?.credibility || 0]);
+  const [showHot, setShowHot] = useState(externalFilters?.showHot || false);
+  const [kenyanOnly, setKenyanOnly] = useState(externalFilters?.kenyanOnly || false);
 
   // Sync with external filters
   useEffect(() => {
@@ -29,6 +34,8 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
       setPlatform(externalFilters.platform);
       setVelocity(externalFilters.velocity);
       setCredibility([externalFilters.credibility]);
+      setShowHot(externalFilters.showHot || false);
+      setKenyanOnly(externalFilters.kenyanOnly || false);
     }
   }, [externalFilters]);
 
@@ -39,14 +46,18 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
         platform,
         velocity,
         credibility: credibility[0],
+        showHot,
+        kenyanOnly,
       });
     }
-  }, [platform, velocity, credibility, onFiltersChange]);
+  }, [platform, velocity, credibility, showHot, kenyanOnly, onFiltersChange]);
 
   const resetFilters = () => {
     setPlatform("all");
     setVelocity("all");
     setCredibility([0]);
+    setShowHot(false);
+    setKenyanOnly(false);
   };
 
   if (!isOpen) return null;
@@ -137,6 +148,43 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
             </div>
           </div>
 
+          {/* Hot/Emerging Stories Toggle */}
+          <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-primary/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-orange-500" />
+                <Label htmlFor="hot-stories" className="cursor-pointer">
+                  Hot/Emerging Stories
+                </Label>
+              </div>
+              <Switch
+                id="hot-stories"
+                checked={showHot}
+                onCheckedChange={setShowHot}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Show stories trending NOW with high engagement velocity (last 6 hours)
+            </p>
+          </div>
+
+          {/* Kenyan Stories Only Toggle */}
+          <div className="space-y-3 p-4 rounded-lg border border-border/50">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="kenyan-only" className="cursor-pointer">
+                Kenyan Stories Only
+              </Label>
+              <Switch
+                id="kenyan-only"
+                checked={kenyanOnly}
+                onCheckedChange={setKenyanOnly}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Filter to show only Kenyan content
+            </p>
+          </div>
+
           {/* Active Filters */}
           <div className="pt-6 border-t border-border/50">
             <div className="flex items-center justify-between mb-3">
@@ -146,6 +194,15 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
+              {showHot && (
+                <Badge variant="default" className="bg-orange-500">
+                  <Flame className="w-3 h-3 mr-1" />
+                  Hot Stories
+                </Badge>
+              )}
+              {kenyanOnly && (
+                <Badge variant="secondary">🇰🇪 Kenyan Only</Badge>
+              )}
               {platform !== "all" && (
                 <Badge variant="secondary" className="capitalize">
                   {platform}
@@ -159,7 +216,7 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
               {credibility[0] > 0 && (
                 <Badge variant="secondary">Min credibility: {credibility[0]}%</Badge>
               )}
-              {platform === "all" && velocity === "all" && credibility[0] === 0 && (
+              {platform === "all" && velocity === "all" && credibility[0] === 0 && !showHot && !kenyanOnly && (
                 <span className="text-sm text-muted-foreground">No active filters</span>
               )}
             </div>

@@ -10,7 +10,7 @@ import { InsightsPanel } from "./components/InsightsPanel";
 import { FilterPanel } from "./components/FilterPanel";
 import { Story } from "./components/StoryCard";
 import { Button } from "./components/ui/button";
-import { fetchStories, healthCheck } from "../services/api";
+import { fetchStories, fetchHotStories, healthCheck } from "../services/api";
 
 export default function App() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
@@ -25,6 +25,8 @@ export default function App() {
     platform: "all",
     velocity: "all",
     credibility: 0,
+    showHot: false,  // Show hot/emerging stories
+    kenyanOnly: false,  // Filter Kenyan stories only
   });
 
   // No mock data - only use real scraped data from API
@@ -51,13 +53,22 @@ export default function App() {
         setApiConnected(isHealthy);
         
         if (isHealthy) {
-          // Fetch real stories from API - ONLY real data, no fallback
-          const params: any = { limit: 50, hours_back: 24 };
-          if (filters.platform !== "all") {
-            params.platform = filters.platform;
+          // Fetch hot/emerging stories if enabled, otherwise regular stories
+          if (filters.showHot) {
+            const fetchedStories = await fetchHotStories(filters.kenyanOnly, 6);
+            setStories(fetchedStories);
+          } else {
+            // Fetch real stories from API - ONLY real data, no fallback
+            const params: any = { limit: 50, hours_back: 24 };
+            if (filters.platform !== "all") {
+              params.platform = filters.platform;
+            }
+            if (filters.kenyanOnly) {
+              params.is_kenyan = true;
+            }
+            const fetchedStories = await fetchStories(params);
+            setStories(fetchedStories);
           }
-          const fetchedStories = await fetchStories(params);
-          setStories(fetchedStories);
         } else {
           // API not available - show empty state, no mock data
           console.warn("API not available - please start the backend server");
@@ -74,10 +85,11 @@ export default function App() {
 
     loadStories();
     
-    // Refresh stories every 5 minutes
-    const interval = setInterval(loadStories, 5 * 60 * 1000);
+    // Refresh stories more frequently for hot stories (every 2 minutes)
+    const refreshInterval = filters.showHot ? 2 * 60 * 1000 : 5 * 60 * 1000;
+    const interval = setInterval(loadStories, refreshInterval);
     return () => clearInterval(interval);
-  }, [filters.platform]);
+  }, [filters.platform, filters.showHot, filters.kenyanOnly]);
 
   // Apply filters to stories
   useEffect(() => {
@@ -166,7 +178,15 @@ export default function App() {
             isOpen={isFilterPanelOpen} 
             onClose={() => setIsFilterPanelOpen(false)}
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={(newFilters) => {
+              setFilters({
+                platform: newFilters.platform,
+                velocity: newFilters.velocity,
+                credibility: newFilters.credibility,
+                showHot: newFilters.showHot,
+                kenyanOnly: newFilters.kenyanOnly,
+              });
+            }}
           />
         )}
       </AnimatePresence>

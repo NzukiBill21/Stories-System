@@ -127,6 +127,7 @@ async def get_stories(
     is_kenyan: Optional[bool] = Query(None),
     location: Optional[str] = Query(None),
     topic: Optional[str] = Query(None),
+    min_velocity: Optional[float] = Query(None, ge=0),
     db: Session = Depends(get_db)
 ):
     """
@@ -137,6 +138,10 @@ async def get_stories(
         min_score: Minimum score threshold
         platform: Filter by platform (X, Facebook, Instagram, TikTok, Reddit, RSS)
         hours_back: Only get stories from last N hours
+        is_kenyan: Filter Kenyan stories only
+        location: Filter by location
+        topic: Filter by topic
+        min_velocity: Minimum engagement velocity (for hot/emerging stories)
         db: Database session
     """
     stories = get_trending_stories(
@@ -147,8 +152,58 @@ async def get_stories(
         hours_back=hours_back,
         is_kenyan=is_kenyan,
         location=location,
-        topic=topic
+        topic=topic,
+        min_velocity=min_velocity
     )
+    
+    return [story_to_response(story) for story in stories]
+
+
+@app.get("/api/stories/hot", response_model=List[StoryResponse])
+async def get_hot_stories(
+    limit: int = Query(30, ge=1, le=100),
+    is_kenyan: Optional[bool] = Query(None),
+    hours_back: int = Query(6, ge=1, le=24),
+    db: Session = Depends(get_db)
+):
+    """
+    Get hot/emerging stories - high engagement velocity stories that are trending NOW.
+    Perfect for catching stories before they blow up.
+    
+    Args:
+        limit: Maximum number of stories to return
+        is_kenyan: Filter Kenyan stories only (recommended for Kenya-focused monitoring)
+        hours_back: Only get stories from last N hours (default: 6 hours for recent trends)
+        db: Database session
+    """
+    # For hot stories, we want high engagement velocity (trending now)
+    # Lower the time window to catch fresh trends
+    # Prioritize by engagement velocity (not just score)
+    from sqlalchemy import and_
+    from datetime import datetime, timedelta
+    
+    time_threshold = datetime.utcnow() - timedelta(hours=hours_back)
+    
+    query = db.query(Story).filter(
+        Story.is_active == True,
+        Story.posted_at >= time_threshold
+    )
+    
+    # Filter Kenyan if requested
+    if is_kenyan is not None:
+        query = query.filter(Story.is_kenyan == is_kenyan)
+    
+    # For hot stories, prioritize by engagement velocity (catching trends early)
+    # Require minimum velocity of 20/hour for "hot" status
+    query = query.filter(Story.engagement_velocity >= 20.0)
+    
+    # Order by engagement velocity DESC (hottest first), then by score
+    stories = query.order_by(
+        Story.engagement_velocity.desc(),  # Highest velocity first (trending NOW)
+        Story.is_kenyan.desc(),  # Kenyan content second
+        Story.score.desc(),  # Then by overall score
+        Story.posted_at.desc()  # Most recent last
+    ).limit(limit).all()
     
     return [story_to_response(story) for story in stories]
 

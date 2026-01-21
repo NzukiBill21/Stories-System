@@ -205,18 +205,24 @@ def calculate_overall_score(
     return overall_score, reason_flagged
 
 
-def should_keep_post(score: float, engagement_velocity: float) -> bool:
+def should_keep_post(score: float, engagement_velocity: float, is_kenyan: bool = False) -> bool:
     """
     Determine if a post should be kept based on thresholds.
+    Lower thresholds for Kenyan content to catch early trends.
     
     Args:
         score: Overall score
         engagement_velocity: Engagement velocity
+        is_kenyan: Whether this is Kenyan content (lower thresholds for early detection)
     
     Returns:
         True if post should be kept, False otherwise
     """
+    # Lower thresholds for Kenyan content to catch stories before they blow up
+    min_score = settings.min_engagement_score * (0.7 if is_kenyan else 1.0)  # 30% lower for Kenyan
+    min_velocity = settings.min_engagement_velocity * (0.5 if is_kenyan else 1.0)  # 50% lower for Kenyan
+    
     return (
-        score >= settings.min_engagement_score and
-        engagement_velocity >= settings.min_engagement_velocity
+        score >= min_score and
+        engagement_velocity >= min_velocity
     )

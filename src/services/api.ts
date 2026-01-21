@@ -107,6 +107,33 @@ export async function fetchSources(): Promise<any[]> {
 }
 
 /**
+ * Fetch hot/emerging stories - high engagement velocity stories trending NOW
+ * Perfect for catching stories before they blow up
+ */
+export async function fetchHotStories(isKenyan?: boolean, hoursBack: number = 6): Promise<Story[]> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('limit', '30');
+  queryParams.append('hours_back', hoursBack.toString());
+  if (isKenyan !== undefined) {
+    queryParams.append('is_kenyan', isKenyan.toString());
+  }
+
+  const url = `${API_BASE_URL}/api/stories/hot?${queryParams.toString()}`;
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching hot stories:', error);
+    throw error;
+  }
+}
+
+/**
  * Health check
  */
 export async function healthCheck(): Promise<boolean> {

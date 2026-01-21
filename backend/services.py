@@ -97,7 +97,8 @@ def scrape_source(db: Session, source_id: int) -> dict:
                 story = process_post_to_story(db, raw_post)
                 if story:
                     posts_processed += 1
-                    if should_keep_post(story.score, story.engagement_velocity):
+                    # Use raw_post.is_kenyan for threshold check (story.is_kenyan is set from raw_post)
+                    if should_keep_post(story.score, story.engagement_velocity, raw_post.is_kenyan):
                         stories_created += 1
                     else:
                         # Delete story if it doesn't meet threshold
@@ -292,7 +293,8 @@ def get_trending_stories(
     hours_back: int = 24,
     is_kenyan: Optional[bool] = None,
     location: Optional[str] = None,
-    topic: Optional[str] = None
+    topic: Optional[str] = None,
+    min_velocity: Optional[float] = None
 ) -> List[Story]:
     """
     Get trending stories from the database.
@@ -320,6 +322,10 @@ def get_trending_stories(
     # Filter by minimum score
     if min_score:
         query = query.filter(Story.score >= min_score)
+    
+    # Filter by minimum engagement velocity (for hot/emerging stories)
+    if min_velocity:
+        query = query.filter(Story.engagement_velocity >= min_velocity)
     
     # Filter by Kenyan content
     if is_kenyan is not None:
