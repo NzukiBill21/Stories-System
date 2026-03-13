@@ -4,9 +4,10 @@ import { StoryCard, Story } from "./StoryCard";
 interface DashboardProps {
   stories: Story[];
   onStorySelect: (story: Story) => void;
+  loadError?: string | null;
 }
 
-export function Dashboard({ stories, onStorySelect }: DashboardProps) {
+export function Dashboard({ stories, onStorySelect, loadError }: DashboardProps) {
   return (
     <div className="space-y-4">
       <motion.div
@@ -31,15 +32,19 @@ export function Dashboard({ stories, onStorySelect }: DashboardProps) {
           <div className="max-w-md mx-auto">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
               <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Stories Yet</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {loadError ? "Cannot Load Stories" : "No Stories Yet"}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Start scraping to discover trending content from TikTok, Facebook, and other platforms.
+              {loadError ?? "Start scraping to discover trending content from TikTok, Facebook, and other platforms."}
             </p>
             <p className="text-xs text-muted-foreground">
-              Go to Sources Management to trigger scraping, or wait for automatic scraping to run.
+              {loadError
+                ? "Fix the issue above, then refresh the page. Ensure MySQL is running in XAMPP and the backend is started (cd backend && python main.py)."
+                : "Go to Sources Management to trigger scraping, or wait for automatic scraping to run."}
             </p>
           </div>
         </motion.div>

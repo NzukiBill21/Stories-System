@@ -8,6 +8,12 @@ import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { useState, useEffect } from "react";
 
+interface QuickStats {
+  total_stories: number;
+  high_velocity: number;
+  active_sources?: number;
+}
+
 interface FilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -17,16 +23,19 @@ interface FilterPanelProps {
     credibility: number;
     showHot?: boolean;
     kenyanOnly?: boolean;
+    topic?: string;
   };
-  onFiltersChange?: (filters: { platform: string; velocity: string; credibility: number; showHot: boolean; kenyanOnly: boolean }) => void;
+  onFiltersChange?: (filters: { platform: string; velocity: string; credibility: number; showHot: boolean; kenyanOnly: boolean; topic: string }) => void;
+  quickStats?: QuickStats | null;
 }
 
-export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFiltersChange }: FilterPanelProps) {
+export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFiltersChange, quickStats }: FilterPanelProps) {
   const [platform, setPlatform] = useState(externalFilters?.platform || "all");
   const [velocity, setVelocity] = useState(externalFilters?.velocity || "all");
   const [credibility, setCredibility] = useState([externalFilters?.credibility || 0]);
   const [showHot, setShowHot] = useState(externalFilters?.showHot || false);
   const [kenyanOnly, setKenyanOnly] = useState(externalFilters?.kenyanOnly || false);
+  const [topic, setTopic] = useState(externalFilters?.topic || "all");
 
   // Sync with external filters
   useEffect(() => {
@@ -36,6 +45,7 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
       setCredibility([externalFilters.credibility]);
       setShowHot(externalFilters.showHot || false);
       setKenyanOnly(externalFilters.kenyanOnly || false);
+      setTopic(externalFilters.topic || "all");
     }
   }, [externalFilters]);
 
@@ -48,9 +58,10 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
         credibility: credibility[0],
         showHot,
         kenyanOnly,
+        topic,
       });
     }
-  }, [platform, velocity, credibility, showHot, kenyanOnly, onFiltersChange]);
+  }, [platform, velocity, credibility, showHot, kenyanOnly, topic, onFiltersChange]);
 
   const resetFilters = () => {
     setPlatform("all");
@@ -58,6 +69,7 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
     setCredibility([0]);
     setShowHot(false);
     setKenyanOnly(false);
+    setTopic("all");
   };
 
   if (!isOpen) return null;
@@ -148,6 +160,30 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
             </div>
           </div>
 
+          {/* Content Category/Topic Filter */}
+          <div className="space-y-3">
+            <Label htmlFor="topic-filter">Content Category</Label>
+            <Select value={topic} onValueChange={setTopic}>
+              <SelectTrigger id="topic-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="Politics">Politics</SelectItem>
+                <SelectItem value="Finance">Finance</SelectItem>
+                <SelectItem value="Real Estate">Real Estate</SelectItem>
+                <SelectItem value="Entertainment">Entertainment</SelectItem>
+                <SelectItem value="Sports">Sports</SelectItem>
+                <SelectItem value="Tech">Tech</SelectItem>
+                <SelectItem value="Health">Health</SelectItem>
+                <SelectItem value="Business">Business</SelectItem>
+                <SelectItem value="Education">Education</SelectItem>
+                <SelectItem value="Crime & Law">Crime & Law</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Hot/Emerging Stories Toggle */}
           <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-primary/5">
             <div className="flex items-center justify-between">
@@ -216,27 +252,32 @@ export function FilterPanel({ isOpen, onClose, filters: externalFilters, onFilte
               {credibility[0] > 0 && (
                 <Badge variant="secondary">Min credibility: {credibility[0]}%</Badge>
               )}
-              {platform === "all" && velocity === "all" && credibility[0] === 0 && !showHot && !kenyanOnly && (
+              {topic !== "all" && (
+                <Badge variant="secondary" className="capitalize">
+                  {topic}
+                </Badge>
+              )}
+              {platform === "all" && velocity === "all" && credibility[0] === 0 && !showHot && !kenyanOnly && topic === "all" && (
                 <span className="text-sm text-muted-foreground">No active filters</span>
               )}
             </div>
           </div>
 
-          {/* Quick Stats */}
+          {/* Quick Stats - real data from API */}
           <div className="pt-6 border-t border-border/50 space-y-3">
             <h4 className="text-sm font-medium text-foreground">Quick Stats</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total Stories</span>
-                <span className="font-semibold text-foreground">847</span>
+                <span className="font-semibold text-foreground">{quickStats != null ? quickStats.total_stories : "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">High Velocity</span>
-                <span className="font-semibold text-foreground">234</span>
+                <span className="font-semibold text-foreground">{quickStats != null ? quickStats.high_velocity : "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Active Sources</span>
-                <span className="font-semibold text-foreground">8</span>
+                <span className="font-semibold text-foreground">{quickStats != null && quickStats.active_sources != null ? quickStats.active_sources : "—"}</span>
               </div>
             </div>
           </div>

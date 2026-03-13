@@ -10,7 +10,7 @@ import { InsightsPanel } from "./components/InsightsPanel";
 import { FilterPanel } from "./components/FilterPanel";
 import { Story } from "./components/StoryCard";
 import { Button } from "./components/ui/button";
-import { fetchStories, fetchHotStories, healthCheck } from "../services/api";
+import { fetchStories, fetchHotStories, getHealth, fetchInsights, type Insights } from "../services/api";
 
 export default function App() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
@@ -21,12 +21,15 @@ export default function App() {
   const [filteredStories, setFilteredStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [quickStats, setQuickStats] = useState<Insights | null>(null);
   const [filters, setFilters] = useState({
     platform: "all",
     velocity: "all",
     credibility: 0,
     showHot: false,  // Show hot/emerging stories
     kenyanOnly: false,  // Filter Kenyan stories only
+    topic: "all",  // Content category filter
   });
 
   // No mock data - only use real scraped data from API
@@ -47,37 +50,38 @@ export default function App() {
   useEffect(() => {
     const loadStories = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
-        // Check API health first
-        const isHealthy = await healthCheck();
-        setApiConnected(isHealthy);
-        
-        if (isHealthy) {
-          // Fetch hot/emerging stories if enabled, otherwise regular stories
-          if (filters.showHot) {
-            const fetchedStories = await fetchHotStories(filters.kenyanOnly, 6);
-            setStories(fetchedStories);
-          } else {
-            // Fetch real stories from API - ONLY real data, no fallback
-            const params: any = { limit: 50, hours_back: 24 };
-            if (filters.platform !== "all") {
-              params.platform = filters.platform;
-            }
-            if (filters.kenyanOnly) {
-              params.is_kenyan = true;
-            }
-            const fetchedStories = await fetchStories(params);
-            setStories(fetchedStories);
-          }
-        } else {
-          // API not available - show empty state, no mock data
-          console.warn("API not available - please start the backend server");
+        const health = await getHealth();
+        setApiConnected(health.ok);
+
+        if (!health.ok) {
+          setLoadError(health.message ?? "Backend or database unavailable.");
           setStories([]);
+          setQuickStats(null);
+          setLoading(false);
+          return;
         }
+
+        if (filters.showHot) {
+          const fetchedStories = await fetchHotStories(filters.kenyanOnly, 6);
+          setStories(fetchedStories);
+        } else {
+          const params: any = { limit: 50, hours_back: 24 };
+          if (filters.platform !== "all") params.platform = filters.platform;
+          if (filters.kenyanOnly) params.is_kenyan = true;
+          if (filters.topic !== "all") params.topic = filters.topic;
+          const fetchedStories = await fetchStories(params);
+          setStories(fetchedStories);
+        }
+        const insights = await fetchInsights(24);
+        setQuickStats(insights ?? null);
       } catch (error) {
-        console.error("Error loading stories:", error);
-        // No mock data fallback - show empty state
+        const message = error instanceof Error ? error.message : "Failed to load stories.";
+        setLoadError(message);
         setStories([]);
+        setQuickStats(null);
+        setApiConnected(false);
       } finally {
         setLoading(false);
       }
@@ -89,7 +93,7 @@ export default function App() {
     const refreshInterval = filters.showHot ? 2 * 60 * 1000 : 5 * 60 * 1000;
     const interval = setInterval(loadStories, refreshInterval);
     return () => clearInterval(interval);
-  }, [filters.platform, filters.showHot, filters.kenyanOnly]);
+  }, [filters.platform, filters.showHot, filters.kenyanOnly, filters.topic]);
 
   // Apply filters to stories
   useEffect(() => {
@@ -143,7 +147,8 @@ export default function App() {
           {activeView === "dashboard" && (
             <Dashboard 
               stories={loading ? [] : filteredStories} 
-              onStorySelect={setSelectedStory} 
+              onStorySelect={setSelectedStory}
+              loadError={loadError}
             />
           )}
           {activeView === "control" && <ControlPanel />}
@@ -159,6 +164,7 @@ export default function App() {
               onClose={() => {}}
               filters={filters}
               onFiltersChange={setFilters}
+              quickStats={quickStats}
             />
           </div>
         )}
@@ -185,8 +191,10 @@ export default function App() {
                 credibility: newFilters.credibility,
                 showHot: newFilters.showHot,
                 kenyanOnly: newFilters.kenyanOnly,
+                topic: newFilters.topic ?? "all",
               });
             }}
+            quickStats={quickStats}
           />
         )}
       </AnimatePresence>

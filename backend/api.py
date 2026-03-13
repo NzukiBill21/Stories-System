@@ -1,11 +1,13 @@
 """FastAPI application with REST endpoints."""
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
+from sqlalchemy.exc import OperationalError
 from typing import List, Optional
 from datetime import datetime, timedelta
-from database import get_db
+from database import get_db, test_connection
 from models import Story, Source
 from services import get_trending_stories, scrape_source
 from pydantic import BaseModel
@@ -23,6 +25,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Return 503 with clear message when database is unreachable
+@app.exception_handler(OperationalError)
+async def db_exception_handler(request, exc: OperationalError):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "Database unavailable. Start MySQL (e.g. XAMPP Control Panel → Start MySQL), create database 'story_intelligence', and run backend/schema.sql or python init_db.py."
+        },
+    )
+
 
 # Start background scheduler when API app starts
 @app.on_event("startup")
@@ -49,6 +62,7 @@ class StoryResponse(BaseModel):
     timestamp: str
     credibility: int
     url: str
+    topic: Optional[str] = None  # Content category/topic
     
     class Config:
         from_attributes = True
@@ -87,7 +101,8 @@ def story_to_response(story: Story) -> StoryResponse:
         reason=story.reason_flagged or "High engagement",
         timestamp=timestamp,
         credibility=int(story.credibility_score),  # Note: This is credibility score, not overall score
-        url=story.url
+        url=story.url,
+        topic=story.topic
     )
 
 
@@ -99,12 +114,14 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint. Includes database connectivity."""
     scheduler = get_scheduler()
+    db_ok = test_connection()
     return {
-        "status": "healthy",
+        "status": "healthy" if db_ok else "degraded",
+        "database": "connected" if db_ok else "disconnected",
         "timestamp": datetime.utcnow().isoformat(),
-        "auto_scraping": scheduler.running if scheduler else False
+        "auto_scraping": scheduler.running if scheduler else False,
     }
 
 
@@ -405,11 +422,14 @@ async def get_insights(
     
     top_keywords = sorted(keywords.items(), key=lambda x: x[1], reverse=True)[:10]
     
+    active_sources = db.query(Source).filter(Source.is_active == True).count()
+    
     return {
         "total_stories": len(stories),
         "high_velocity": high_velocity,
         "medium_velocity": medium_velocity,
         "low_velocity": low_velocity,
+        "active_sources": active_sources,
         "trending_topics": [
             {"name": topic, "count": count}
             for topic, count in trending_topics

@@ -229,14 +229,26 @@ def process_post_to_story(db: Session, raw_post: RawPost) -> Optional[Story]:
         # Extract topic from content or hashtags
         topic = None
         content_lower = (raw_post.content or "").lower()
-        if any(kw in content_lower for kw in ["politics", "election", "government"]):
+        if any(kw in content_lower for kw in ["politics", "election", "government", "parliament", "senate", "mp", "president", "minister", "political", "vote", "campaign"]):
             topic = "Politics"
-        elif any(kw in content_lower for kw in ["entertainment", "music", "movie", "celebrity"]):
+        elif any(kw in content_lower for kw in ["finance", "financial", "bank", "banking", "currency", "shilling", "dollar", "stock", "market", "trading", "investment", "investor", "economy", "economic", "budget", "tax"]):
+            topic = "Finance"
+        elif any(kw in content_lower for kw in ["real estate", "property", "land", "house", "apartment", "rent", "mortgage", "developer", "construction", "housing", "estate"]):
+            topic = "Real Estate"
+        elif any(kw in content_lower for kw in ["entertainment", "music", "movie", "celebrity", "actor", "actress", "film", "tv", "show", "concert", "festival"]):
             topic = "Entertainment"
-        elif any(kw in content_lower for kw in ["sports", "football", "cricket", "athletics"]):
+        elif any(kw in content_lower for kw in ["sports", "football", "cricket", "athletics", "soccer", "rugby", "basketball", "tennis", "olympics", "match", "game", "player"]):
             topic = "Sports"
-        elif any(kw in content_lower for kw in ["tech", "technology", "innovation", "startup"]):
+        elif any(kw in content_lower for kw in ["tech", "technology", "innovation", "startup", "app", "software", "digital", "ai", "artificial intelligence", "internet", "social media"]):
             topic = "Tech"
+        elif any(kw in content_lower for kw in ["health", "medical", "hospital", "doctor", "disease", "treatment", "vaccine", "healthcare", "covid", "pandemic", "wellness"]):
+            topic = "Health"
+        elif any(kw in content_lower for kw in ["business", "company", "corporate", "enterprise", "entrepreneur", "startup", "industry", "commerce", "trade"]):
+            topic = "Business"
+        elif any(kw in content_lower for kw in ["education", "school", "university", "student", "teacher", "learning", "academic", "college"]):
+            topic = "Education"
+        elif any(kw in content_lower for kw in ["crime", "police", "arrest", "court", "judge", "law", "legal", "justice", "trial", "sentence"]):
+            topic = "Crime & Law"
         else:
             topic = "General"
         

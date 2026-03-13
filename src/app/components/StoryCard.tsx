@@ -13,6 +13,7 @@ export interface Story {
   timestamp: string;
   credibility: number;
   url: string;
+  topic?: string;  // Content category/topic
 }
 
 interface StoryCardProps {
@@ -67,10 +68,15 @@ export function StoryCard({ story, onClick }: StoryCardProps) {
         </div>
 
         {/* Source and Platform */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <Badge variant="secondary" className={`${getPlatformColor(story.platform)} text-xs`}>
             {story.platform}
           </Badge>
+          {story.topic && (
+            <Badge variant="outline" className="text-xs">
+              {story.topic}
+            </Badge>
+          )}
           <span className="text-sm text-muted-foreground truncate">{story.source}</span>
         </div>
 

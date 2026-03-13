@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     
     # Server
     api_host: str = "0.0.0.0"
-    api_port: int = 8001  # Changed to avoid conflict with other API
+    api_port: int = 8000  # Must match frontend VITE_API_URL (default http://localhost:8000)
     
     # Trusted sources (high credibility accounts)
     trusted_sources: List[str] = [

@@ -12,6 +12,7 @@ export interface Story {
   timestamp: string;
   credibility: number;
   url: string;
+  topic?: string;  // Content category/topic
 }
 
 export interface StoriesQueryParams {
@@ -19,6 +20,8 @@ export interface StoriesQueryParams {
   min_score?: number;
   platform?: string;
   hours_back?: number;
+  topic?: string;  // Content category filter
+  is_kenyan?: boolean;
 }
 
 /**
@@ -31,13 +34,17 @@ export async function fetchStories(params: StoriesQueryParams = {}): Promise<Sto
   if (params.min_score) queryParams.append('min_score', params.min_score.toString());
   if (params.platform) queryParams.append('platform', params.platform);
   if (params.hours_back) queryParams.append('hours_back', params.hours_back.toString());
+  if (params.topic) queryParams.append('topic', params.topic);
+  if (params.is_kenyan !== undefined) queryParams.append('is_kenyan', params.is_kenyan.toString());
 
   const url = `${API_BASE_URL}/api/stories${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
   
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errBody = await response.json().catch(() => ({}));
+      const message = errBody.detail || `HTTP error! status: ${response.status}`;
+      throw new Error(typeof message === 'string' ? message : message.join?.(' ') || String(message));
     }
     const data = await response.json();
     return data;
@@ -123,7 +130,9 @@ export async function fetchHotStories(isKenyan?: boolean, hoursBack: number = 6)
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errBody = await response.json().catch(() => ({}));
+      const message = errBody.detail || `HTTP error! status: ${response.status}`;
+      throw new Error(typeof message === 'string' ? message : message.join?.(' ') || String(message));
     }
     const data = await response.json();
     return data;
@@ -133,16 +142,64 @@ export async function fetchHotStories(isKenyan?: boolean, hoursBack: number = 6)
   }
 }
 
+export interface HealthStatus {
+  ok: boolean;
+  databaseConnected: boolean;
+  message?: string;
+}
+
 /**
- * Health check
+ * Full health check (API + database). Use this to show specific error messages.
  */
-export async function healthCheck(): Promise<boolean> {
+export async function getHealth(): Promise<HealthStatus> {
   const url = `${API_BASE_URL}/api/health`;
-  
   try {
     const response = await fetch(url);
-    return response.ok;
+    const data = await response.json().catch(() => ({}));
+    const databaseConnected = data.database === 'connected';
+    const ok = response.ok && databaseConnected;
+    return {
+      ok,
+      databaseConnected,
+      message: !databaseConnected
+        ? "Database unavailable. Start MySQL in XAMPP, create database 'story_intelligence', and run backend/schema.sql or python init_db.py."
+        : undefined,
+    };
   } catch (error) {
-    return false;
+    return {
+      ok: false,
+      databaseConnected: false,
+      message: "Backend not reachable. Start the API with: cd backend && python main.py",
+    };
   }
+}
+
+/**
+ * Fetch insights (total stories, velocity counts, active sources).
+ */
+export interface Insights {
+  total_stories: number;
+  high_velocity: number;
+  medium_velocity: number;
+  low_velocity: number;
+  active_sources?: number;
+}
+
+export async function fetchInsights(hoursBack: number = 24): Promise<Insights | null> {
+  const url = `${API_BASE_URL}/api/insights?hours_back=${hoursBack}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Health check - true only when API and database are both OK.
+ */
+export async function healthCheck(): Promise<boolean> {
+  const health = await getHealth();
+  return health.ok;
 }
